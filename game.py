@@ -21,8 +21,8 @@ class GameRunner(object):
 
     def _run_round(self, player_one_has_crib):
         cards = cribbage.Deck.draw(13)
-        hand1_cards = cards[0:6]
-        hand2_cards = cards[6:12]
+        hand1_cards = sorted(cards[0:6])
+        hand2_cards = sorted(cards[6:12])
         starter_card = cards[-1]
 
         hand1 = cribbage.Hand(list(hand1_cards))
@@ -70,6 +70,6 @@ class GameRunner(object):
 
 if __name__ == '__main__':
     import test_ai
-    runner = GameRunner(test_ai.RandomBot(), test_ai.RandomBot())
+    runner = GameRunner(test_ai.HumanBot(), test_ai.RandomBot())
     runner.run_game()
 

@@ -99,6 +99,17 @@ class Card(object):
         self.rank = rank
         self.suit = suit
 
+    def __cmp__(self, other):
+        rank_cmp = self.rank - other.rank
+        if rank_cmp:
+            return rank_cmp
+        if self.suit < other.suit:
+            return -1
+        elif self.suit > other.suit:
+            return 1
+        else:
+            return 0
+
     @property
     def colored_print(self):
         """ Print a color version of the hand, suitable for CLI
@@ -231,8 +242,9 @@ class Scorer(object):
 
         runs = []
         for length in sorted(combos_dict.keys(), reverse=True):
-            if any(Scorer.is_run(cards) for cards in combos_dict[length]):
-                runs.append(length)
+            num_runs_of_length = sum(Scorer.is_run(cards) for cards in combos_dict[length])
+            if num_runs_of_length:
+                runs.append(length * num_runs_of_length)
                 break
 
         flushes = []
@@ -269,6 +281,10 @@ class Scorer(object):
         return score_dict
 
 if __name__ == '__main__':
+    cards = Deck.all_cards()
+    test_hand1 = Hand([cards[0], cards[1], cards[2], cards[5], cards[9]])
+    print test_hand1.prompt
+    print Scorer.score(test_hand1)
     for _ in xrange(10):
         hand = Hand(Deck.draw(5))
         print hand.prompt
