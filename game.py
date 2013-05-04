@@ -1,5 +1,10 @@
+import argparse
 import random
+import logging
+
 import cribbage
+import kyle_ai
+import test_ai
 
 GAME_OVER_POINTS = 121
 
@@ -65,11 +70,20 @@ class GameRunner(object):
             self._run_round(player_one_has_crib)
             player_one_has_crib = bool(not player_one_has_crib)
 
-        print self.scores
+        return self.scores
 
 
 if __name__ == '__main__':
-    import test_ai
-    runner = GameRunner(test_ai.HumanBot(), test_ai.RandomBot())
-    runner.run_game()
+    parser = argparse.ArgumentParser(description='Run some cribbage AIs.')
+    parser.add_argument('--num_games', default=1, required=False, type=int, help='Number of games to run')
+    args = parser.parse_args()
+    game_scores = []
+    for i in xrange(args.num_games):
+        runner = GameRunner(kyle_ai.KyleBotV1(), kyle_ai.KyleBotV1())
+        game_scores.append(runner.run_game())
+        print i, game_scores[-1]
+
+    num_player_one_wins = sum(score[0] > score[1] for score in game_scores)
+    print "Player 1:", num_player_one_wins
+    print "Player 2:", args.num_games - num_player_one_wins
 
