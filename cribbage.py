@@ -112,6 +112,12 @@ class Card(object):
         self.rank = rank
         self.suit = suit
 
+    def __hash__(self):
+        return hash(self.plaintext_print)
+
+    def __eq__(self, other):
+        return self.rank == other.rank and self.suit == other.suit
+
     def __cmp__(self, other):
         rank_cmp = self.rank - other.rank
         if rank_cmp:

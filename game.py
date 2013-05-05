@@ -4,10 +4,12 @@ import random
 import time
 
 import cribbage
+import _kyle_ai
 import kyle_ai
 import test_ai
 
 GAME_OVER_POINTS = 121
+MAX_TIME_FOR_PLAY = 15
 
 class GameRunner(object):
 
@@ -27,7 +29,6 @@ class GameRunner(object):
         return self.scores[0] > GAME_OVER_POINTS or self.scores[1] > GAME_OVER_POINTS or any(self.forfeits)
 
     def _time_play(self, player_index, run_func, *run_args, **run_kwargs):
-        MAX_TIME_FOR_PLAY = 10
         start_time = time.time()
         ret_val = run_func(*run_args, **run_kwargs)
         end_time = time.time()
@@ -53,6 +54,8 @@ class GameRunner(object):
             player_one_has_crib,
             self.scores,
         )
+        if not set(self.bot1.hand.cards).issubset(hand1_cards) or len(self.bot1.hand.cards) != 4:
+            self.forfeits[0] = True
         if self._game_over():
             self.scores[0] = -1
             return
@@ -63,6 +66,8 @@ class GameRunner(object):
             not player_one_has_crib,
             list(reversed(self.scores)),
         )
+        if not set(self.bot2.hand.cards).issubset(hand2_cards) or len(self.bot2.hand.cards) != 4:
+            self.forfeits[1] = True
         if self._game_over():
             self.scores[1] = -1
             return
@@ -107,7 +112,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     game_scores = []
     for i in xrange(args.num_games):
-        runner = GameRunner(kyle_ai.KyleBotV1(), kyle_ai.KyleBotV1())
+        runner = GameRunner(kyle_ai.KyleBotV1(), test_ai.RandomBot())
         game_scores.append(runner.run_game())
         print i, game_scores[-1]
 
