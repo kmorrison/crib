@@ -1,6 +1,7 @@
 import argparse
-import random
 import logging
+import random
+import time
 
 import cribbage
 import kyle_ai
@@ -14,6 +15,7 @@ class GameRunner(object):
         self.bots = [bot1, bot2]
         self.bot1 = bot1
         self.bot2 = bot2
+        self.forfeits = [False, False]
 
     def player_index(self, bot):
         if bot is self.bot1:
@@ -22,7 +24,16 @@ class GameRunner(object):
             return 1
 
     def _game_over(self):
-        return self.scores[0] > GAME_OVER_POINTS or self.scores[1] > GAME_OVER_POINTS
+        return self.scores[0] > GAME_OVER_POINTS or self.scores[1] > GAME_OVER_POINTS or any(self.forfeits)
+
+    def _time_play(self, player_index, run_func, *run_args, **run_kwargs):
+        MAX_TIME_FOR_PLAY = 10
+        start_time = time.time()
+        ret_val = run_func(*run_args, **run_kwargs)
+        end_time = time.time()
+        if end_time - start_time > MAX_TIME_FOR_PLAY:
+            self.forfeits[player_index] = True
+        return ret_val
 
     def _run_round(self, player_one_has_crib):
         cards = cribbage.Deck.draw(13)
@@ -36,10 +47,27 @@ class GameRunner(object):
         self.bot1.notify_new_hand(hand1)
         self.bot2.notify_new_hand(hand2)
 
-        crib_cards = list(
-            self.bot1.ask_for_crib_throw(player_one_has_crib, self.scores)
-            + self.bot2.ask_for_crib_throw(not player_one_has_crib, reversed(self.scores))
+        bot1_crib_throw = self._time_play(
+            0,
+            self.bot1.ask_for_crib_throw,
+            player_one_has_crib,
+            self.scores,
         )
+        if self._game_over():
+            self.scores[0] = -1
+            return
+
+        bot2_crib_throw = self._time_play(
+            1,
+            self.bot2.ask_for_crib_throw,
+            not player_one_has_crib,
+            list(reversed(self.scores)),
+        )
+        if self._game_over():
+            self.scores[1] = -1
+            return
+
+        crib_cards = bot1_crib_throw + bot2_crib_throw
 
         self.bot1.notify_starter_card(starter_card)
         self.bot2.notify_starter_card(starter_card)

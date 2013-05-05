@@ -18,6 +18,8 @@ Pedagogical Goals:
 
 
 import itertools
+import collections
+import math
 import os
 import random
 import string
@@ -85,6 +87,17 @@ RED_ESCAPE_OPEN = u'\x1b[31m'
 RED_ESCAPE_CLOSE = u'\x1b[0m'
 
 
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
+
+def ranged_powerset(iterable, range_):
+    for i in xrange(range_[0], range_[1] + 1):
+        for x in itertools.combinations(iterable, i):
+            yield x
+
 class Card(object):
     """ One of the 52 standard playing cards.
 
@@ -135,11 +148,17 @@ class Card(object):
 
 class Deck(object):
 
+    # XXX: Ghetto memoization
+    _all_cards = None
+
     @classmethod
     def all_cards(cls):
+        if cls._all_cards is not None:
+            return cls._all_cards
         full_deck = list(itertools.product(RANKS.keys(), SUITS.keys()))
         hand_as_cards = [Card(card[0], card[1]) for card in
                 full_deck]
+        cls._all_cards = hand_as_cards
         return hand_as_cards
 
     @classmethod
@@ -158,7 +177,7 @@ class Hand(object):
     def __init__(self, cards, starter_card=None, is_crib=False, has_crib=False):
         """ Get a random hand of five cards.
         """
-        self.cards = cards
+        self.cards = list(cards)
         self.starter_card = starter_card
 
     @property
@@ -194,28 +213,44 @@ class Hand(object):
 class Scorer(object):
 
     @classmethod
+    def has_run(cls, hand):
+        # Assume sorted hand
+        for i in xrange(len(hand) - 2):
+            cards = hand[i:i+3]
+            if Scorer.is_run(cards):
+                return True
+        return False
+
+    @classmethod
     def is_run(cls, hand):
+        # Assume sorted hand
         if len(hand) < 3:
             return False
         ranks = [card.rank for card in hand]
 
-        ranks.sort()
-
-        for i in range(len(ranks) - 1):
+        for i in xrange(len(ranks) - 1):
             if ranks[i + 1] - ranks[i] != 1:
                 return False
 
         return True
 
     @classmethod
-    def is_flush(cls, hand):
+    def flush_points(cls, hand):
         if len(hand) < 4:
-            return False
+            return 0
 
-        suits = [card.suit for card in hand]
+        suit_counter = collections.Counter([card.suit for card in hand])
+        if any(val for val in suit_counter.values() if val > 3):
+            return max(val for val in suit_counter.values())
+        return 0
 
-        num_suits = len(set(suits))
-        return num_suits == 1
+    @classmethod
+    def has_pairs(cls, hand):
+        # Assume sorted hand
+        for card, next_card in pairwise(hand):
+            if card.rank == next_card.rank:
+                return True
+        return False
 
     @classmethod
     def score(cls, hand, has_crib=False, is_crib=False):
@@ -230,31 +265,31 @@ class Scorer(object):
         Nobs - J of same suit as starter
         """
 
-        combos_dict = {}
-        for i in xrange(2, len(hand.all_cards) + 1):
-            combos_dict[i] = list(itertools.combinations(hand.all_cards, i))
+        all_cards = sorted(hand.all_cards)
 
-        pairs = [2 for pair in combos_dict[2] if pair[0].rank == pair[1].rank]
+        pairs = []
+        if Scorer.has_pairs(all_cards):
+            counts = collections.Counter([card.rank for card in all_cards])
+            pairs = [2 * sum(xrange(1, val)) for val in counts.values() if val > 1]
 
-        all_combos = itertools.chain.from_iterable(combos_dict.values())
-        fifteens = [2 for combo in itertools.chain.from_iterable(combos_dict.values()) if
+        fifteens = [2 for combo in ranged_powerset(all_cards, [2, 5]) if
                 sum([VALUES[card.rank] for card in combo]) == 15]
 
         runs = []
-        for length in sorted(combos_dict.keys(), reverse=True):
-            num_runs_of_length = sum(Scorer.is_run(cards) for cards in combos_dict[length])
-            if num_runs_of_length:
-                runs.append(length * num_runs_of_length)
-                break
+        if Scorer.has_run(all_cards):
+            prev_len = 0
+            for run in reversed(list(ranged_powerset(all_cards, [3, 5]))):
+                run_len = len(run)
+                if runs and run_len != prev_len:
+                    break
+                prev_len = run_len
+                if Scorer.is_run(run):
+                    runs.append(run_len)
 
-        flushes = []
-        for length in sorted(combos_dict.keys(), reverse=True):
-            if any(Scorer.is_flush(cards) for cards in combos_dict[length]):
-                if is_crib and length != 5:
-                    # Crib flushes must be all 5
-                    continue
-                flushes.append(length)
-                break
+        flush_points = Scorer.flush_points(all_cards)
+        if flush_points != 5 and is_crib:
+            # Crib flushes must be all 5
+            flush_points = 0
 
         nobs = []
         heels = []
@@ -267,15 +302,16 @@ class Scorer(object):
 
                 assert sum(nobs) in [0, 1]
 
-        score = sum(pairs + fifteens + runs + flushes + nobs)
+        score = sum(pairs + fifteens + runs + nobs + heels) + flush_points
 
         score_dict = dict(
             score=score,
             pairs=sum(pairs),
             fifteens=sum(fifteens),
             runs=sum(runs),
-            flushes=sum(flushes),
+            flushes=flush_points,
             nobs=sum(nobs),
+            heels=sum(heels),
         )
 
         return score_dict

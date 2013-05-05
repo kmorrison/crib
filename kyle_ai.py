@@ -35,7 +35,7 @@ class KyleBotV1(Bot):
             for starter_card in card_set:
                 hand.add_starter_card(starter_card)
                 total_score += self._score_from_hand(hand, card_set, has_crib)
-                total_score += self._score_from_crib(cards_to_throw, starter_card, card_set, has_crib)
+                total_score += self._score_from_crib(cards_to_throw, starter_card, card_set - set(possible_hand), has_crib)
 
             if total_score > best_score:
                 best_score = total_score
@@ -54,9 +54,17 @@ class KyleBotV1(Bot):
 class KyleBotV2(KyleBotV1):
     def _score_from_crib(self, cards_to_throw, starter_card, card_set, has_crib):
         total_card_set = card_set - set(cards_to_throw) - set([starter_card])
+        crib_score = 0
+        num_other_cribs = 0
         for other_cribs in itertools.combinations(card_set, 2):
-            pass
-
+            new_hand = cribbage.Hand(list(cards_to_throw) + list(other_cribs))
+            new_hand.add_starter_card(starter_card)
+            crib_score += cribbage.Scorer.score(new_hand, is_crib=True)['score']
+            num_other_cribs += 1
+        expected_crib_score = float(crib_score) / float(num_other_cribs)
+        if not has_crib:
+            return -1 * expected_crib_score
+        return expected_crib_score
 
 
 if __name__ == '__main__':
