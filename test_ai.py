@@ -18,6 +18,14 @@ class RandomBot(Bot):
     def ask_for_crib_throw(self, has_crib, scores=None):
         return self.hand.throw_cards(*random.sample(self.hand.cards, 2))
 
+class OneSixBot(Bot):
+
+    def ask_for_crib_throw(self, has_crib, scores=None):
+        if has_crib:
+            return self.hand.throw_cards(self.hand.cards[0], self.hand.cards[1])
+        else:
+            return self.hand.throw_cards(self.hand.cards[0], self.hand.cards[5])
+
 
 class HumanBot(Bot):
 

@@ -26,7 +26,7 @@ class GameRunner(object):
             return 1
 
     def _game_over(self):
-        return self.scores[0] > GAME_OVER_POINTS or self.scores[1] > GAME_OVER_POINTS or any(self.forfeits)
+        return self.scores[0] >= GAME_OVER_POINTS or self.scores[1] >= GAME_OVER_POINTS or any(self.forfeits)
 
     def _time_play(self, player_index, run_func, *run_args, **run_kwargs):
         start_time = time.time()
@@ -111,10 +111,21 @@ if __name__ == '__main__':
     parser.add_argument('--num_games', default=1, required=False, type=int, help='Number of games to run')
     args = parser.parse_args()
     game_scores = []
-    for i in xrange(args.num_games):
-        runner = GameRunner(kyle_ai.KyleBotV1(), test_ai.RandomBot())
+    players = [
+        kyle_ai.KyleBotV3,
+        kyle_ai.KyleBotV1,
+    ]
+    for i in xrange(args.num_games / 2):
+        random_state = random.getstate()
+        runner = GameRunner(*[player() for player in players])
         game_scores.append(runner.run_game())
         print i, game_scores[-1]
+
+        random.setstate(random_state)
+        runner = GameRunner(*list(reversed([player() for player in players])))
+        game_scores.append(list(reversed(runner.run_game())))
+        print i, game_scores[-1]
+
 
     num_player_one_wins = sum(score[0] > score[1] for score in game_scores)
     print "Player 1:", num_player_one_wins
