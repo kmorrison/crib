@@ -151,6 +151,8 @@ class Card(object):
     def __repr__(self):
         return self.plaintext_print
 
+def sum_cards_for_pegging(cards_in_pegging_round):
+    return sum(VALUES[card.rank] for card in cards_in_pegging_round)
 
 class Deck(object):
 

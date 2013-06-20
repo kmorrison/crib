@@ -12,11 +12,22 @@ class Bot(object):
     def notify_new_hand(self, hand):
         self.hand = hand
 
+    def ask_for_next_peg_card(self, cards_in_pegging_round, all_cards_pegged):
+        raise NotImplementedError
+
 
 class RandomBot(Bot):
 
     def ask_for_crib_throw(self, has_crib, scores=None):
         return self.hand.throw_cards(*random.sample(self.hand.cards, 2))
+
+    def ask_for_next_peg_card(self, cards_in_pegging_round, all_cards_pegged):
+        current_sum = cribbage.sum_cards_for_pegging(cards_in_pegging_round)
+        cards_not_played = set(self.hand.cards) - set(all_cards_pegged)
+        cards_can_play = [card for card in cards_not_played if cribbage.VALUES[card.rank] < (31 - current_sum)]
+        if not cards_can_play:
+            return None
+        return random.choice(cards_can_play)
 
 class OneSixBot(Bot):
 
@@ -25,6 +36,14 @@ class OneSixBot(Bot):
             return self.hand.throw_cards(self.hand.cards[0], self.hand.cards[1])
         else:
             return self.hand.throw_cards(self.hand.cards[0], self.hand.cards[5])
+
+    def ask_for_next_peg_card(self, cards_in_pegging_round, all_cards_pegged):
+        current_sum = cribbage.sum_cards_for_pegging(cards_in_pegging_round)
+        cards_not_played = set(self.hand.cards) - set(all_cards_pegged)
+        cards_can_play = [card for card in cards_not_played if cribbage.VALUES[card.rank] < (31 - current_sum)]
+        if not cards_can_play:
+            return None
+        return sorted(cards_can_play)[-1]
 
 
 class HumanBot(Bot):

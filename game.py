@@ -4,7 +4,6 @@ import random
 import time
 
 import cribbage
-import _kyle_ai
 import kyle_ai
 import test_ai
 
@@ -35,6 +34,40 @@ class GameRunner(object):
         if end_time - start_time > MAX_TIME_FOR_PLAY:
             self.forfeits[player_index] = True
         return ret_val
+
+    def do_pegging(self, player_one_has_crib):
+        player_idx_to_start = 0
+        if player_one_has_crib:
+            player_idx_to_start = 1
+
+        all_cards_pegged = set()
+        cards_in_pegging_round = []
+        gos = [False, False]
+        while len(all_cards_pegged) < 8 and not self._game_over():
+            peg_card = self.bots[player_idx_to_start].ask_for_next_peg_card(
+                list(cards_in_pegging_round),
+                list(all_cards_pegged),
+            )
+            if peg_card is None:
+                gos[player_idx_to_start] = True
+                if sum(gos) == 2:
+                    gos = [False, False]
+                    cards_in_pegging_round = []
+                    self.scores[player_idx_to_start] += 1
+                player_idx_to_start ^= 1
+                continue
+
+            # TODO: Check if cheating
+            all_cards_pegged.add(peg_card)
+            cards_in_pegging_round.append(peg_card)
+            # TODO: Score card
+            pegging_sum = cribbage.sum_cards_for_pegging(cards_in_pegging_round)
+            assert pegging_sum <= 31
+            if pegging_sum == 31:
+                gos = [False, False]
+                cards_in_pegging_round = []
+                self.scores[player_idx_to_start] += 2
+            player_idx_to_start ^= 1
 
     def _run_round(self, player_one_has_crib):
         cards = cribbage.Deck.draw(13)
@@ -77,7 +110,9 @@ class GameRunner(object):
         self.bot1.notify_starter_card(starter_card)
         self.bot2.notify_starter_card(starter_card)
 
-        # TODO: peg
+        self.do_pegging(player_one_has_crib)
+        if self._game_over():
+            return
 
         count_order = [0, 1]
         if player_one_has_crib:
@@ -112,8 +147,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     game_scores = []
     players = [
-        kyle_ai.KyleBotV3,
-        kyle_ai.KyleBotV1,
+        test_ai.RandomBot,
+        test_ai.OneSixBot,
     ]
     for i in xrange(args.num_games / 2):
         random_state = random.getstate()
