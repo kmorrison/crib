@@ -66,6 +66,15 @@ class KyleBotV1(Bot):
 
         return self.hand.throw_cards(cards_to_throw[0], cards_to_throw[1])
 
+    def ask_for_next_peg_card(self, cards_in_pegging_round, all_cards_pegged):
+        """Implements the OneSixBot's method of pegging."""
+        current_sum = cribbage.sum_cards_for_pegging(cards_in_pegging_round)
+        cards_not_played = set(self.hand.cards) - set(all_cards_pegged)
+        cards_can_play = [card for card in cards_not_played if cribbage.VALUES[card.rank] < (31 - current_sum)]
+        if not cards_can_play:
+            return None
+        return sorted(cards_can_play)[-1]
+
 class KyleBotV2(KyleBotV1):
     NUM_SAMPLES = 100
     def _score_from_crib(self, cards_to_throw, starter_card, other_cards, has_crib):

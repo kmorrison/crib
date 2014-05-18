@@ -218,6 +218,9 @@ class Hand(object):
         return cards
 
 
+SERIALIZED_HAND_CACHE = {}
+
+
 class Scorer(object):
 
     @classmethod
@@ -261,6 +264,10 @@ class Scorer(object):
         return False
 
     @classmethod
+    def _serialize_hand(cls, cards):
+        return tuple(sorted([VALUES[card.rank] for card in cards]))
+
+    @classmethod
     def score(cls, hand, has_crib=False, is_crib=False):
         """ Score the hand in this Deal
 
@@ -274,25 +281,29 @@ class Scorer(object):
         """
 
         all_cards = sorted(hand.all_cards)
+        serialized_hand = cls._serialize_hand(all_cards)
+        if serialized_hand in SERIALIZED_HAND_CACHE:
+            pairs, fifteens, runs = SERIALIZED_HAND_CACHE[serialized_hand]
+        else:
+            pairs = []
+            if Scorer.has_pairs(all_cards):
+                counts = collections.Counter([card.rank for card in all_cards])
+                pairs = [2 * sum(xrange(1, val)) for val in counts.values() if val > 1]
 
-        pairs = []
-        if Scorer.has_pairs(all_cards):
-            counts = collections.Counter([card.rank for card in all_cards])
-            pairs = [2 * sum(xrange(1, val)) for val in counts.values() if val > 1]
+            fifteens = [2 for combo in ranged_powerset(all_cards, [2, 5]) if
+                    sum([VALUES[card.rank] for card in combo]) == 15]
 
-        fifteens = [2 for combo in ranged_powerset(all_cards, [2, 5]) if
-                sum([VALUES[card.rank] for card in combo]) == 15]
-
-        runs = []
-        if Scorer.has_run(all_cards):
-            prev_len = 0
-            for run in reversed(list(ranged_powerset(all_cards, [3, 5]))):
-                run_len = len(run)
-                if runs and run_len != prev_len:
-                    break
-                prev_len = run_len
-                if Scorer.is_run(run):
-                    runs.append(run_len)
+            runs = []
+            if Scorer.has_run(all_cards):
+                prev_len = 0
+                for run in reversed(list(ranged_powerset(all_cards, [3, 5]))):
+                    run_len = len(run)
+                    if runs and run_len != prev_len:
+                        break
+                    prev_len = run_len
+                    if Scorer.is_run(run):
+                        runs.append(run_len)
+            SERIALIZED_HAND_CACHE[serialized_hand] = (pairs, fifteens, runs)
 
         flush_points = Scorer.flush_points(all_cards)
         if flush_points != 5 and is_crib:

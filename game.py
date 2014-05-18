@@ -143,12 +143,18 @@ class GameRunner(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run some cribbage AIs.')
-    parser.add_argument('--num_games', default=1, required=False, type=int, help='Number of games to run')
+    parser.add_argument(
+        '--num_games',
+        default=1,
+        required=False,
+        type=int,
+        help='Number of games to run',
+    )
     args = parser.parse_args()
     game_scores = []
     players = [
-        test_ai.RandomBot,
-        test_ai.OneSixBot,
+        kyle_ai.KyleBotV2,
+        kyle_ai.KyleBotV1,
     ]
     for i in xrange(args.num_games / 2):
         random_state = random.getstate()
